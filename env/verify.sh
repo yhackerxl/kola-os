@@ -43,8 +43,8 @@ AVAIL=$(df -Pk "$REPO" | awk 'NR==2{print $4}')
 if [ "${AVAIL:-0}" -gt 20000000 ]; then ok "$((AVAIL/1024/1024)) GB free"; else bad "need ~20 GB free, have $((AVAIL/1024/1024)) GB"; fi
 
 echo "== build root: ${ROOT}"
-if [ -d "${ROOT}/etc" ]; then
-	ok "root exists"
+if [ -x "${ROOT}/bin/bash" ] && [ -f "${ROOT}/etc/debian_version" ]; then
+	ok "Debian $(cat "${ROOT}/etc/debian_version" 2>/dev/null || echo '?') root present"
 	for p in live-build debootstrap squashfs-tools xorriso mtools dosfstools \
 		grub-efi-amd64-bin grub-pc-bin syslinux-common isolinux; do
 		if chroot "${ROOT}" dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q "install ok installed"; then
@@ -54,7 +54,7 @@ if [ -d "${ROOT}/etc" ]; then
 		fi
 	done
 else
-	bad "build root missing - run ./env/bootstrap.sh"
+	bad "build root missing or incomplete (no /bin/bash) - run ./env/bootstrap.sh"
 fi
 
 echo "== repository"

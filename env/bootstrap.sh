@@ -5,9 +5,9 @@
 # project. A new project just points KOLA_BUILDROOT at it (default below) and
 # reuses the same live-build toolchain - no reinstall, no host pollution.
 #
-# Usage:
-#   ./env/bootstrap.sh                     # install host tools + build root
-#   KOLA_BUILDROOT=~/images/lb ./env/bootstrap.sh
+# Self-healing:
+#   - incomplete root (no /bin/bash) -> moved aside, recreated
+#   - valid root, missing packages   -> repaired with apt inside the chroot
 set -euo pipefail
 
 ROOT="${KOLA_BUILDROOT:-$HOME/.cache/debian12-live-build}"
@@ -37,7 +37,41 @@ CHROOT_PKGS=(
 	less
 )
 
-[ "$(id -u)" -eq 0 ] || exec sudo -E "$0" "$@"
+[ "$(id -u)" -eq 0 ] || exec sudo -E env KOLA_BUILDROOT="${ROOT}" "$0" "$@"
+
+valid_root() {
+	[ -x "${ROOT}/bin/bash" ] && [ -f "${ROOT}/etc/debian_version" ]
+}
+
+missing_pkgs() {
+	local p
+	for p in "${CHROOT_PKGS[@]}"; do
+		chroot "${ROOT}" dpkg-query -W -f='${Status}' "$p" 2>/dev/null |
+			grep -q "install ok installed" || echo "$p"
+	done
+}
+
+repair_root() {
+	echo ">> repairing ${ROOT}: mounting pseudo-filesystems"
+	mkdir -p "${ROOT}/dev" "${ROOT}/dev/pts" "${ROOT}/proc" "${ROOT}/sys"
+	mountpoint -q "${ROOT}/dev" || mount --bind /dev "${ROOT}/dev"
+	mountpoint -q "${ROOT}/dev/pts" || mount --bind /dev/pts "${ROOT}/dev/pts"
+	mountpoint -q "${ROOT}/proc" || mount -t proc proc "${ROOT}/proc"
+	mountpoint -q "${ROOT}/sys" || mount --bind /sys "${ROOT}/sys"
+	cp -f /etc/resolv.conf "${ROOT}/etc/resolv.conf"
+
+	local rc=0
+	chroot "${ROOT}" apt-get update || rc=$?
+	if [ "${rc}" -eq 0 ]; then
+		# shellcheck disable=SC2086
+		chroot "${ROOT}" apt-get install -y --no-install-recommends "${CHROOT_PKGS[@]}" || rc=$?
+	fi
+
+	for m in "${ROOT}/dev/pts" "${ROOT}/dev" "${ROOT}/proc" "${ROOT}/sys"; do
+		mountpoint -q "$m" 2>/dev/null && umount "$m" || true
+	done
+	return "${rc}"
+}
 
 echo ">> host packages"
 apt-get update
@@ -48,8 +82,21 @@ if [ -n "${SUDO_USER:-}" ] && ! id -nG "${SUDO_USER}" | tr ' ' '\n' | grep -qx k
 	echo ">> ${SUDO_USER} added to group kvm (log out/in before QEMU KVM acceleration works)"
 fi
 
-if [ -d "${ROOT}/etc" ]; then
+if [ -d "${ROOT}" ] && ! valid_root; then
+	STAMP=$(date +%Y%m%d-%H%M%S)
+	echo ">> incomplete build root detected (no /bin/bash, no /etc/debian_version)"
+	echo ">> moving it aside: ${ROOT}.incomplete-${STAMP}"
+	mv "${ROOT}" "${ROOT}.incomplete-${STAMP}"
+fi
+
+if valid_root; then
 	echo ">> reusing existing build root: ${ROOT}"
+	MISSING=$(missing_pkgs || true)
+	if [ -n "${MISSING}" ]; then
+		echo ">> missing packages:"
+		echo "${MISSING}" | sed 's/^/     /'
+		repair_root
+	fi
 else
 	echo ">> creating build root: ${ROOT}"
 	mkdir -p "$(dirname "${ROOT}")"
@@ -60,17 +107,12 @@ else
 fi
 
 echo ">> verifying chroot packages"
-missing=0
-for p in "${CHROOT_PKGS[@]}"; do
-	if ! chroot "${ROOT}" dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q "install ok installed"; then
-		echo "   MISSING: $p"
-		missing=1
-	fi
-done
-
-if [ "${missing}" -ne 0 ]; then
-	echo "ERROR: build root incomplete - install the missing packages inside ${ROOT}" >&2
+MISSING=$(missing_pkgs || true)
+if [ -n "${MISSING}" ]; then
+	echo "ERROR: build root still incomplete:" >&2
+	echo "${MISSING}" | sed 's/^/   MISSING: /' >&2
 	exit 1
 fi
 
 echo ">> build root ready: ${ROOT}"
+du -sh "${ROOT}" 2>/dev/null || true
