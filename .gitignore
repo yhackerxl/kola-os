@@ -26,6 +26,7 @@ chroot/
 .build/
 .lock
 logs/
+.mirror
 
 # live-build injects root-owned absolute symlinks to its own default hooks on
 # every `lb config`. They are machine-specific and must never be committed.

@@ -1,0 +1,9 @@
+# Debian mirrors benchmarked by env/mirror.sh at build time.
+# One URL per line, comments ignored. Best performer wins.
+http://ftp.nl.debian.org/debian
+http://ftp.us.debian.org/debian
+http://ftp.fi.debian.org/debian
+http://ftp.de.debian.org/debian
+http://ftp.fr.debian.org/debian
+http://deb.debian.org/debian
+http://debian.mirror.ac.ke/debian

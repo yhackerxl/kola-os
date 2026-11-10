@@ -55,3 +55,16 @@ Never delete logs as part of recovery — they are the only evidence of the fail
 ## 6. Gate
 
 `make build` runs `env/verify.sh` first. Any FAIL aborts the build.
+
+## 7. Mirror selection is dynamic
+
+Never hardcode a Debian mirror. `env/mirrors.txt` holds candidates,
+`env/mirror.sh` benchmarks them (6 s each), caches the winner in `.mirror`
+(1 h TTL, gitignored) and `auto/config` reads it. Throughput here swings
+30–950 KB/s per mirror, so a fixed mirror is guaranteed to be wrong eventually.
+
+```bash
+./env/mirror.sh --force   # re-benchmark now
+./env/mirror.sh --show    # current selection
+KOLA_MIN_KBPS=50 make build   # accept a slow link instead of failing the gate
+```

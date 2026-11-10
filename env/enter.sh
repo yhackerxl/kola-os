@@ -14,6 +14,11 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 	exit 1
 }
 
+if [ ! -f "${REPO}/.mirror" ]; then
+	echo ">> selecting mirror (first run, ~40 s)"
+	"${REPO}/env/mirror.sh" --select >/dev/null 2>&1 || true
+fi
+
 cleanup() {
 	for m in "${ROOT}/build" "${ROOT}/dev/pts" "${ROOT}/dev" "${ROOT}/proc" "${ROOT}/sys"; do
 		mountpoint -q "$m" 2>/dev/null && umount "$m" || true

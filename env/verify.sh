@@ -115,22 +115,19 @@ else
 fi
 
 echo "== mirror throughput"
-MIRROR=$(grep -o -- '--mirror-chroot [^ \\]*' "$REPO/auto/config" 2>/dev/null | head -1 | awk '{print $2}')
-if [ -n "${MIRROR}" ]; then
-	r=$(curl --max-time 6 -s -r 0-2000000 -o /dev/null -w '%{speed_download}' \
-		"${MIRROR}/dists/bookworm/main/binary-amd64/Packages.gz" 2>/dev/null)
-	KBS=$(awk -v v="${r:-0}" 'BEGIN{printf "%.0f", v/1024}')
-	if [ "${KBS}" -ge 250 ]; then
-		ok "mirror ${MIRROR} (${KBS} KB/s)"
-	elif [ "${KBS}" -ge 100 ]; then
-		warn "mirror ${MIRROR} slow (${KBS} KB/s) - build will take longer"
-	elif [ "${KBS}" -gt 0 ]; then
-		bad "mirror ${MIRROR} crawling (${KBS} KB/s) - change --mirror-* in auto/config"
-	else
-		bad "mirror ${MIRROR} unreachable"
-	fi
+MIRROR_LINE=$("$REPO/env/mirror.sh" --select 2>/dev/null || true)
+MIRROR=$(echo "${MIRROR_LINE}" | awk '{print $1}')
+KBS=$(echo "${MIRROR_LINE}" | awk '{print $2}')
+MIN_KBPS="${KOLA_MIN_KBPS:-100}"
+if [ -z "${MIRROR}" ]; then
+	bad "no reachable Debian mirror (see env/mirrors.txt)"
+elif [ "${KBS:-0}" -ge 250 ]; then
+	ok "mirror ${MIRROR} (${KBS} KB/s)"
+elif [ "${KBS:-0}" -ge "${MIN_KBPS}" ]; then
+	warn "mirror ${MIRROR} (${KBS} KB/s) - slower than ideal, build will take longer"
 else
-	skip "no --mirror-chroot set, using live-build default"
+	bad "best mirror ${MIRROR} only ${KBS:-0} KB/s (min ${MIN_KBPS}); every mirror is slow right now"
+	skip "retry later with: ./env/mirror.sh --force   (or set KOLA_MIN_KBPS to accept it)"
 fi
 
 echo "== repository"
