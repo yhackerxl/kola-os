@@ -46,7 +46,12 @@ fi
 
 echo "== disk space"
 AVAIL=$(df -Pk "$REPO" | awk 'NR==2{print $4}')
-if [ "${AVAIL:-0}" -gt 20000000 ]; then ok "$((AVAIL/1024/1024)) GB free"; else bad "need ~20 GB free, have $((AVAIL/1024/1024)) GB"; fi
+MIN_KB=$((20 * 1024 * 1024))
+if [ "${AVAIL:-0}" -ge "${MIN_KB}" ]; then
+	ok "$((AVAIL/1024/1024)) GB free (min 20 GB)"
+else
+	bad "need 20 GB free, have $((AVAIL/1024/1024)) GB"
+fi
 
 pkg_installed() {
 	local p="$1"

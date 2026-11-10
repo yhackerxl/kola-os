@@ -17,6 +17,17 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 export LC_ALL=C
 
+# --- mandatory disk pre-flight (AGENTS.md rule 1) -------------------------
+MIN_FREE_GB=20
+AVAIL_KB=$(df -Pk / | awk 'NR==2 {print $4}')
+MIN_KB=$((MIN_FREE_GB * 1024 * 1024))
+if [ "${AVAIL_KB:-0}" -lt "${MIN_KB}" ]; then
+	echo "ERROR: $(awk -v k="${AVAIL_KB:-0}" 'BEGIN{printf "%.1f", k/1024/1024}') GB free on /," \
+		"${MIN_FREE_GB} GB required. Aborting before touching the tree." >&2
+	exit 1
+fi
+echo ">> disk: $(awk -v k="${AVAIL_KB}" 'BEGIN{printf "%.0f", k/1024/1024}') GB free on / (min ${MIN_FREE_GB} GB)"
+
 # debootstrap can leave /proc, /sys or /dev mounted inside chroot/. A live procfs
 # there makes `cp -a chroot cache/bootstrap` (mandatory bootstrap cache) die on
 # /proc/1/task/1/mem, and makes `lb clean` fail with EBUSY.

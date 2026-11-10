@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Enter the shared Debian 12 build root and run the build.
-# Only this repo is bind-mounted at /build; the host filesystem is untouched.
+# Enter the shared Debian 12 build root.
+#   ./env/enter.sh                      -> run ./build.sh
+#   ./env/enter.sh lb clean --purge     -> run an arbitrary command inside
 set -euo pipefail
 
 ROOT="${KOLA_BUILDROOT:-$HOME/.cache/debian12-live-build}"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-[ "$(id -u)" -eq 0 ] || exec sudo -E "$0" "$@"
+[ "$(id -u)" -eq 0 ] || exec sudo -E env KOLA_BUILDROOT="${ROOT}" "$0" "$@"
 
 [ -d "${ROOT}/etc" ] || {
 	echo "ERROR: ${ROOT} missing. Run ./env/bootstrap.sh first." >&2
@@ -30,4 +31,10 @@ mount -t proc proc "${ROOT}/proc"
 mount --bind /sys "${ROOT}/sys"
 cp -f /etc/resolv.conf "${ROOT}/etc/resolv.conf"
 
-chroot "${ROOT}" /bin/bash -lc 'cd /build && ./build.sh'
+if [ "$#" -gt 0 ]; then
+	CMD="$*"
+else
+	CMD="./build.sh"
+fi
+
+chroot "${ROOT}" /bin/bash -lc "cd /build && ${CMD}"
