@@ -68,7 +68,8 @@ echo "== build root: ${ROOT}"
 if [ -x "${ROOT}/bin/bash" ] && [ -f "${ROOT}/etc/debian_version" ]; then
 	ok "Debian $(cat "${ROOT}/etc/debian_version" 2>/dev/null || echo '?') root present"
 	for p in live-build debootstrap squashfs-tools xorriso mtools dosfstools \
-		grub-efi-amd64-bin grub-pc-bin syslinux-common isolinux; do
+		grub-efi-amd64-bin grub-pc-bin syslinux-common isolinux \
+		mount util-linux rsync cpio xz-utils apt-utils e2fsprogs parted gawk; do
 		if pkg_installed "$p"; then
 			ok "chroot: $p"
 		else

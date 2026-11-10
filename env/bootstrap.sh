@@ -37,6 +37,18 @@ CHROOT_PKGS=(
 	file
 	less
 	debian-archive-keyring
+	# --variant=apt omits Priority: required, and live-build declares only
+	# `debootstrap` as a dependency. These are runtime requirements of its scripts.
+	mount
+	util-linux
+	rsync
+	cpio
+	xz-utils
+	apt-utils
+	e2fsprogs
+	parted
+	gawk
+	bc
 )
 
 [ "$(id -u)" -eq 0 ] || exec sudo -E env KOLA_BUILDROOT="${ROOT}" "$0" "$@"

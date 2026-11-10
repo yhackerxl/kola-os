@@ -21,7 +21,9 @@ fi
 
 cleanup() {
 	for m in "${ROOT}/build" "${ROOT}/dev/pts" "${ROOT}/dev" "${ROOT}/proc" "${ROOT}/sys"; do
-		mountpoint -q "$m" 2>/dev/null && umount "$m" || true
+		if mountpoint -q "$m" 2>/dev/null; then
+			umount "$m" 2>/dev/null || umount -l "$m" 2>/dev/null || true
+		fi
 	done
 }
 trap cleanup EXIT
