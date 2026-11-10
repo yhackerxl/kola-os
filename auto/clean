@@ -1,3 +1,12 @@
 #!/bin/sh
+# live-build invokes this script from `lb clean`.
+#
+# It must NEVER call `lb` itself. Doing so recurses:
+#   lb clean -> auto/clean -> lb clean -> auto/clean -> ...
+# which exhausts the PID table (observed: 1000+ processes, no build progress).
 set -e
-lb clean --purge
+
+# project-specific artefacts only; live-build handles its own tree
+rm -f build-*.log
+
+exit 0
