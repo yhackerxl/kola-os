@@ -3,14 +3,19 @@
 ## Pipeline
 
 ```
-env/bootstrap.sh  ->  ~/.cache/kola-buildroot (Debian 12, mmdebstrap)
+env/bootstrap.sh  ->  ~/.cache/debian12-live-build (Debian 12, mmdebstrap)
+env/verify.sh     ->  pre-build gate: host tools, OVMF, KVM, disk, chroot, syntax
 env/enter.sh      ->  bind-mount repo at /build, chroot, run build.sh
 build.sh          ->  lb clean -> lb config -> auto/config -> lb build
                   ->  kola-os-*.iso + .sha256
 ```
 
-Host (Pop!_OS) is used only to host the chroot. `live-build` never sees the host
-root filesystem.
+The build root is **outside the repo and shared**: a new project reuses the same
+Debian 12 toolchain by pointing `KOLA_BUILDROOT` at it (default
+`~/.cache/debian12-live-build`). Host (Pop!_OS) is used only to host the chroot.
+`live-build` never sees the host root filesystem.
+
+`make build` runs `env/verify.sh` first and aborts on any failure.
 
 ## Components that MUST be verified on the first build
 

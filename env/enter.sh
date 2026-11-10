@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Enter the Debian 12 build root and run the build.
-# Only the repo is bind-mounted; the host filesystem is untouched.
+# Enter the shared Debian 12 build root and run the build.
+# Only this repo is bind-mounted at /build; the host filesystem is untouched.
 set -euo pipefail
 
-ROOT="${KOLA_BUILDROOT:-$HOME/.cache/kola-buildroot}"
+ROOT="${KOLA_BUILDROOT:-$HOME/.cache/debian12-live-build}"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 [ "$(id -u)" -eq 0 ] || exec sudo -E "$0" "$@"

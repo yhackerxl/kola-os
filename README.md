@@ -15,11 +15,16 @@ used as the build root. Everything happens inside a dedicated Debian 12 chroot a
 `~/.cache/kola-buildroot`; the repo is bind-mounted at `/build`.
 
 ```
-./env/bootstrap.sh     # one-time: create Debian 12 chroot + tooling (needs sudo)
+./env/bootstrap.sh     # one-time per machine: host tools + shared Debian 12 root
+./env/verify.sh        # gate: must PASS before any build
 make build             # lb config + lb build inside the chroot
 make test              # boot the ISO in QEMU/OVMF
 make clean
 ```
+
+The build root lives at `~/.cache/debian12-live-build` and is **shared across
+projects**; a new project only needs `KOLA_BUILDROOT` set to it (the default).
+Nothing is installed per-project.
 
 Output: `kola-os-*.iso` in the repo root.
 

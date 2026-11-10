@@ -2,14 +2,17 @@ SHELL := /bin/bash
 REPO  := $(shell pwd)
 ISO   := $(firstword $(wildcard kola-os-*.iso))
 
-.PHONY: all env build test clean lint
+.PHONY: all env verify build test clean lint
 
 all: build
 
 env:
 	./env/bootstrap.sh
 
-build:
+verify:
+	./env/verify.sh
+
+build: verify
 	./env/enter.sh
 
 test:
