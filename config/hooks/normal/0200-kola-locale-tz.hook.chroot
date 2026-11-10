@@ -1,0 +1,23 @@
+#!/bin/sh
+# Kola OS: Tanzania locale, timezone, keyboard.
+set -eu
+
+sed -i 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+grep -q '^sw_TZ.UTF-8 UTF-8' /etc/locale.gen || echo 'sw_TZ.UTF-8 UTF-8' >> /etc/locale.gen
+locale-gen
+
+# UI stays en_US (complete translations); sw_TZ is available for desktop strings.
+echo 'LANG=en_US.UTF-8' > /etc/default/locale
+
+ln -sf /usr/share/zoneinfo/Africa/Dar_es_Salaam /etc/localtime
+echo 'Africa/Dar_es_Salaam' > /etc/timezone
+
+cat > /etc/default/keyboard <<'EOF'
+XKBMODEL="pc105"
+XKBLAYOUT="us"
+XKBVARIANT=""
+XKBOPTIONS=""
+BACKSPACE="guess"
+EOF
+
+exit 0

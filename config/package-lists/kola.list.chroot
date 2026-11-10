@@ -1,0 +1,50 @@
+# Kola OS v0.1 - chroot package set
+# Recommends are disabled globally: every runtime dependency must be explicit.
+
+# --- X server
+xserver-xorg
+xserver-xorg-legacy
+xinit
+
+# --- session
+openbox
+lightdm
+lightdm-gtk-greeter
+
+# --- panel / tray (systray host for nm-applet + volumeicon)
+tint2
+
+# --- user applications (strict limit)
+lxterminal
+pcmanfm
+geany
+epiphany-browser
+lxtask
+
+# --- networking (Wi-Fi scanning + connect from tray)
+network-manager
+network-manager-gnome
+
+# --- audio: ALSA only, no sound server (no PulseAudio/PipeWire daemon)
+alsa-utils
+volumeicon-alsa
+gstreamer1.0-alsa
+gstreamer1.0-plugins-base
+gstreamer1.0-plugins-good
+
+# --- removable media (schools save work to USB)
+udisks2
+gvfs
+
+# --- fonts, locale, clock
+fonts-dejavu-core
+fonts-liberation
+locales
+tzdata
+systemd-timesyncd
+console-setup
+keyboard-configuration
+
+# --- base utilities
+sudo
+ca-certificates

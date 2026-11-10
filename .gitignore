@@ -1,0 +1,24 @@
+# live-build state
+config/binary
+config/bootstrap
+config/chroot
+config/chroot_apt
+config/chroot_local-includes
+config/common
+config/source
+config/bootstrap.log
+config/binary_rootfs
+config/chroot_local-hooks
+config/hooks/*.hook.binary.tmp
+*.iso
+*.iso.zsync
+*.iso.sha256
+*.iso.md5
+*.iso.sha512
+*.log
+build-*.log
+
+# build artefacts
+binary/
+cache/
+.tmp/

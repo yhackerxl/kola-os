@@ -1,0 +1,53 @@
+#!/bin/sh
+# Kola OS: auto-toram.
+#
+# `toram` copies the squashfs into RAM. Epiphany/WebKit needs ~1.3-1.4 GB total,
+# so toram is only safe above KOLA_TORAM_MIN_MB (default 1600). Below that the
+# system boots normally from the USB stick.
+#
+# GRUB cannot measure RAM, so the decision is made in the initramfs by patching
+# live-boot's script. The patch is anchor-checked: if upstream layout changes,
+# the build fails here instead of shipping a non-booting image.
+set -eu
+
+LIVE=/usr/share/initramfs-tools/scripts/live
+MIN_MB="${KOLA_TORAM_MIN_MB:-1600}"
+
+[ -f "${LIVE}" ] || { echo "KOLA: ${LIVE} missing" >&2; exit 1; }
+
+if grep -q 'KOLA_AUTO_TORAM' "${LIVE}"; then
+	echo "KOLA: auto-toram already patched"
+	exit 0
+fi
+
+BLOCK=$(cat <<EOF
+# KOLA_AUTO_TORAM: enable toram only when the machine can hold the image
+if [ -z "\${TORAM}" ] && [ -r /proc/meminfo ]; then
+	_kola_mem_mb=\$(awk '/^MemTotal:/{print int(\$2/1024)}' /proc/meminfo)
+	if [ "\${_kola_mem_mb:-0}" -ge ${MIN_MB} ]; then
+		TORAM=Yes
+		echo "KOLA: \${_kola_mem_mb} MB RAM, enabling toram" >&2
+	fi
+fi
+EOF
+)
+
+# live-boot initialises TORAM before parsing /proc/cmdline; injecting right
+# after that assignment means an explicit `toram` parameter still wins.
+awk -v block="${BLOCK}" '
+	!done && /^TORAM=/ { print; print block; done=1; next }
+	{ print }
+' "${LIVE}" > "${LIVE}.kola"
+
+grep -q 'KOLA_AUTO_TORAM' "${LIVE}.kola" || {
+	echo "KOLA: could not find TORAM initialisation in ${LIVE} - inspect live-boot layout" >&2
+	rm -f "${LIVE}.kola"
+	exit 1
+}
+
+mv "${LIVE}.kola" "${LIVE}"
+chmod 0755 "${LIVE}"
+
+update-initramfs -u -k all
+
+exit 0

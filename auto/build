@@ -1,0 +1,6 @@
+#!/bin/sh
+# Invoked by `lb build`. Must not call `lb build` again.
+set -e
+lb bootstrap
+lb chroot
+lb binary

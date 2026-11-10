@@ -1,0 +1,8 @@
+# Wi-Fi / GPU firmware: Debian 12 moved these to non-free-firmware.
+# Without them, most school laptops have no wireless interface at all.
+firmware-linux-free
+firmware-iwlwifi
+firmware-realtek
+firmware-atheros
+firmware-brcm80211
+firmware-misc-nonfree

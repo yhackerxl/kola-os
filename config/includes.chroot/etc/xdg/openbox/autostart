@@ -1,0 +1,14 @@
+#!/bin/sh
+# Openbox session autostart (system-wide, inherited by the live user).
+
+# Panel: taskbar + systray (nm-applet, volumeicon) + RAM meter
+tint2 &
+
+# Wi-Fi tray: scan / connect
+nm-applet --sm-disable &
+
+# Volume tray
+volumeicon &
+
+# Removable media handling for PCManFM
+udisksctl monitor >/dev/null 2>&1 &

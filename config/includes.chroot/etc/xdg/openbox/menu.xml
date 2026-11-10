@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+	<menu id="root-menu" label="Kola OS">
+		<item label="Terminal">
+			<action name="Execute"><command>lxterminal</command></action>
+		</item>
+		<item label="Files">
+			<action name="Execute"><command>pcmanfm</command></action>
+		</item>
+		<item label="Browser">
+			<action name="Execute"><command>epiphany</command></action>
+		</item>
+		<item label="Editor (Geany)">
+			<action name="Execute"><command>geany</command></action>
+		</item>
+		<item label="Task Manager">
+			<action name="Execute"><command>lxtask</command></action>
+		</item>
+		<separator />
+		<item label="Volume">
+			<action name="Execute"><command>alsamixer</command></action>
+		</item>
+		<item label="Network">
+			<action name="Execute"><command>nm-connection-editor</command></action>
+		</item>
+		<separator />
+		<item label="Reconfigure Openbox">
+			<action name="Reconfigure" />
+		</item>
+	</menu>
+</openbox_menu>

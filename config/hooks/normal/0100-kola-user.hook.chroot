@@ -1,0 +1,22 @@
+#!/bin/sh
+# Kola OS: normalise the live user, groups and sudo policy.
+set -eu
+
+if ! id -u kola >/dev/null 2>&1; then
+	useradd -m -s /bin/bash kola
+fi
+
+for grp in sudo audio video netdev plugdev; do
+	getent group "${grp}" >/dev/null && usermod -aG "${grp}" kola
+done
+
+# No password: autologin is the only entry point in v0.1.
+passwd -d kola
+
+# live-boot may recreate the account on every boot; mirror the policy.
+if [ -f /etc/sudoers.d/kola ]; then
+	chown root:root /etc/sudoers.d/kola
+	chmod 0440 /etc/sudoers.d/kola
+fi
+
+exit 0
