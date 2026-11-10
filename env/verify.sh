@@ -83,7 +83,7 @@ done
 [ -f "$REPO/config/bootloaders/grub-efi/grub.cfg" ] && ok "GRUB override" || bad "GRUB override missing"
 
 # recursion guard: auto/clean is called by `lb clean` and must not call lb
-if grep -qE '(^|[[:space:];&|])lb[[:space:]]+clean' "$REPO/auto/clean" 2>/dev/null; then
+if grep -vE '^[[:space:]]*#' "$REPO/auto/clean" 2>/dev/null | grep -qE '(^|[[:space:];&|])lb[[:space:]]+clean'; then
 	bad "auto/clean calls 'lb clean' (fork loop)"
 else
 	ok "auto/clean has no lb recursion"

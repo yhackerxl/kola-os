@@ -17,6 +17,14 @@ Debian 12 toolchain by pointing `KOLA_BUILDROOT` at it (default
 
 `make build` runs `env/verify.sh` first and aborts on any failure.
 
+## Invariants (do not break)
+
+- `auto/clean` is called **by** `lb clean`. It must never call `lb` itself —
+  `lb clean -> auto/clean -> lb clean` is an unbounded fork loop.
+  `env/verify.sh` fails the gate if this reappears.
+- `auto/build` is called **by** `lb build`. It must call `lb bootstrap`,
+  `lb chroot`, `lb binary` — never `lb build`.
+
 ## Components that MUST be verified on the first build
 
 1. **`config/bootloaders/grub-efi/grub.cfg`** — custom zero-timeout config.
