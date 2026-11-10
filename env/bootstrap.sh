@@ -14,7 +14,8 @@ ROOT="${KOLA_BUILDROOT:-$HOME/.cache/debian12-live-build}"
 SUITE="${KOLA_SUITE:-bookworm}"
 MIRROR="${KOLA_MIRROR:-http://deb.debian.org/debian}"
 
-HOST_PKGS=(mmdebstrap debootstrap qemu-system-x86 ovmf)
+HOST_PKGS=(mmdebstrap debootstrap qemu-system-x86 ovmf debian-archive-keyring)
+DEBIAN_KEYRING=/usr/share/keyrings/debian-archive-keyring.gpg
 
 # Everything live-build needs. The chroot uses --variant=apt, so recommends are
 # NOT pulled automatically; this list must stay explicit.
@@ -35,6 +36,7 @@ CHROOT_PKGS=(
 	console-setup
 	file
 	less
+	debian-archive-keyring
 )
 
 [ "$(id -u)" -eq 0 ] || exec sudo -E env KOLA_BUILDROOT="${ROOT}" "$0" "$@"
@@ -77,6 +79,11 @@ echo ">> host packages"
 apt-get update
 apt-get install -y --no-install-recommends "${HOST_PKGS[@]}"
 
+[ -f "${DEBIAN_KEYRING}" ] || {
+	echo "ERROR: ${DEBIAN_KEYRING} missing - Debian archive keys unavailable, apt cannot verify bookworm" >&2
+	exit 1
+}
+
 if [ -n "${SUDO_USER:-}" ] && ! id -nG "${SUDO_USER}" | tr ' ' '\n' | grep -qx kvm; then
 	usermod -aG kvm "${SUDO_USER}"
 	echo ">> ${SUDO_USER} added to group kvm (log out/in before QEMU KVM acceleration works)"
@@ -102,6 +109,7 @@ else
 	mkdir -p "$(dirname "${ROOT}")"
 	mmdebstrap \
 		--variant=apt \
+		--keyring="${DEBIAN_KEYRING}" \
 		--include="$(IFS=,; echo "${CHROOT_PKGS[*]}")" \
 		"${SUITE}" "${ROOT}" "${MIRROR}"
 fi

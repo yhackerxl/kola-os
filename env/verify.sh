@@ -20,6 +20,11 @@ fi
 for c in qemu-system-x86_64; do
 	if command -v "$c" >/dev/null; then ok "$c"; else bad "$c (run ./env/bootstrap.sh)"; fi
 done
+if [ -f /usr/share/keyrings/debian-archive-keyring.gpg ]; then
+	ok "debian-archive-keyring"
+else
+	bad "debian-archive-keyring (run ./env/bootstrap.sh)"
+fi
 
 echo "== UEFI firmware"
 OVMF_CODE=""
