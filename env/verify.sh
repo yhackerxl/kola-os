@@ -73,6 +73,32 @@ else
 	bad "build root missing or incomplete (no /bin/bash) - run ./env/bootstrap.sh"
 fi
 
+echo "== live-build option values"
+check_opt() {
+	local opt="$1"; shift
+	local val
+	val=$(grep -o -- "--${opt} [^ \\\\]*" "$REPO/auto/config" 2>/dev/null | head -1 | awk '{print $2}')
+	[ -n "${val}" ] || return 0
+	local allowed
+	for allowed in "$@"; do
+		if [ "${val}" = "${allowed}" ]; then
+			ok "config: --${opt}=${val}"
+			return 0
+		fi
+	done
+	bad "config: --${opt}=${val} (allowed: $*)"
+}
+check_opt initramfs-compression bzip2 gzip lzma
+check_opt compression bzip2 gzip lzip xz none
+check_opt debian-installer cdrom netinst netboot businesscard live none
+check_opt memtest memtest86+ memtest86 none
+check_opt uefi-secure-boot auto enable disable
+check_opt firmware-chroot true false
+check_opt firmware-binary true false
+check_opt bootloader grub-efi grub-pc syslinux
+check_opt architectures amd64
+check_opt binary-images iso-hybrid iso hdd netboot
+
 echo "== repository"
 if (cd "$REPO" && bash -n build.sh env/*.sh test/*.sh) 2>/dev/null; then ok "shell syntax"; else bad "shell syntax"; fi
 for f in "$REPO"/config/hooks/normal/*.hook.chroot; do

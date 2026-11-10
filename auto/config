@@ -20,10 +20,11 @@ lb config noauto \
 	--memtest none \
 	--firmware-chroot true \
 	--firmware-binary false \
+	--uefi-secure-boot disable \
 	--security false \
 	--updates false \
 	--compression xz \
-	--initramfs-compression xz \
+	--initramfs-compression gzip \
 	--checksums sha256 \
 	--iso-application "Kola OS" \
 	--iso-preparer "Kola OS Project" \
