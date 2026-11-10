@@ -22,7 +22,7 @@ Package lists are data files, not hardcoded in scripts:
 ## 2. Clone and provision
 
 ```bash
-git clone https://github.com/<owner>/kola-os.git
+git clone https://github.com/yhackerxl/kola-os.git
 cd kola-os
 ./env/bootstrap.sh
 ```
