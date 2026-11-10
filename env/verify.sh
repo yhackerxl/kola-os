@@ -47,12 +47,23 @@ echo "== disk space"
 AVAIL=$(df -Pk "$REPO" | awk 'NR==2{print $4}')
 if [ "${AVAIL:-0}" -gt 20000000 ]; then ok "$((AVAIL/1024/1024)) GB free"; else bad "need ~20 GB free, have $((AVAIL/1024/1024)) GB"; fi
 
+pkg_installed() {
+	local p="$1"
+	if [ "$(id -u)" -eq 0 ]; then
+		chroot "${ROOT}" dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q "install ok installed"
+	else
+		# non-root: read the status database directly (world-readable)
+		awk -v pkg="$p" 'BEGIN{RS="";FS="\n"} $1=="Package: "pkg && /Status: install ok installed/ {f=1} END{exit !f}' \
+			"${ROOT}/var/lib/dpkg/status" 2>/dev/null
+	fi
+}
+
 echo "== build root: ${ROOT}"
 if [ -x "${ROOT}/bin/bash" ] && [ -f "${ROOT}/etc/debian_version" ]; then
 	ok "Debian $(cat "${ROOT}/etc/debian_version" 2>/dev/null || echo '?') root present"
 	for p in live-build debootstrap squashfs-tools xorriso mtools dosfstools \
 		grub-efi-amd64-bin grub-pc-bin syslinux-common isolinux; do
-		if chroot "${ROOT}" dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q "install ok installed"; then
+		if pkg_installed "$p"; then
 			ok "chroot: $p"
 		else
 			bad "chroot: $p missing"
