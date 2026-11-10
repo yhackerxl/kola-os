@@ -9,6 +9,7 @@ fail=0
 
 ok()   { printf '  [ OK ]   %s\n' "$1"; }
 bad()  { printf '  [ FAIL ] %s\n' "$1"; fail=1; }
+warn() { printf '  [ WARN ] %s\n' "$1"; }
 skip() { printf '  [ -- ]   %s\n' "$1"; }
 
 echo "== host tools"
@@ -114,10 +115,12 @@ if [ -n "${MIRROR}" ]; then
 	r=$(curl --max-time 6 -s -r 0-2000000 -o /dev/null -w '%{speed_download}' \
 		"${MIRROR}/dists/bookworm/main/binary-amd64/Packages.gz" 2>/dev/null)
 	KBS=$(awk -v v="${r:-0}" 'BEGIN{printf "%.0f", v/1024}')
-	if [ "${KBS}" -ge 200 ]; then
+	if [ "${KBS}" -ge 250 ]; then
 		ok "mirror ${MIRROR} (${KBS} KB/s)"
+	elif [ "${KBS}" -ge 100 ]; then
+		warn "mirror ${MIRROR} slow (${KBS} KB/s) - build will take longer"
 	elif [ "${KBS}" -gt 0 ]; then
-		bad "mirror ${MIRROR} slow (${KBS} KB/s) - pick a faster mirror in auto/config"
+		bad "mirror ${MIRROR} crawling (${KBS} KB/s) - change --mirror-* in auto/config"
 	else
 		bad "mirror ${MIRROR} unreachable"
 	fi
