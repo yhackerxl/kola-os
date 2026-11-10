@@ -17,6 +17,21 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 export LC_ALL=C
 
+# debootstrap can leave /proc, /sys or /dev mounted inside chroot/. A live procfs
+# there makes `cp -a chroot cache/bootstrap` (mandatory bootstrap cache) die on
+# /proc/1/task/1/mem, and makes `lb clean` fail with EBUSY.
+unmount_stale() {
+	local d
+	for d in chroot/proc chroot/sys chroot/dev/pts chroot/dev; do
+		if mountpoint -q "$d" 2>/dev/null; then
+			echo ">> unmounting stale $d"
+			umount "$d" 2>/dev/null || umount -l "$d" 2>/dev/null || true
+		fi
+	done
+}
+unmount_stale
+trap unmount_stale EXIT
+
 apt-get update -qq
 apt-get install -y --no-install-recommends live-build ca-certificates
 

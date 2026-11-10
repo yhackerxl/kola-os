@@ -99,6 +99,15 @@ check_opt bootloader grub-efi grub-pc syslinux
 check_opt architectures amd64
 check_opt binary-images iso-hybrid iso hdd netboot
 
+# debootstrap leaves a live /proc inside chroot/; live-build's bootstrap cache
+# then copies procfs and dies on /proc/1/task/1/mem. Skipping that stage is the
+# only reliable fix (LB_CACHE=false still forces bootstrap caching).
+if grep -q -- '--cache-stages none' "$REPO/auto/config" 2>/dev/null; then
+	ok "config: --cache-stages=none (bootstrap cache disabled)"
+else
+	bad "config: --cache-stages none missing (proc leak in bootstrap cache)"
+fi
+
 echo "== mirror throughput"
 MIRROR=$(grep -o -- '--mirror-chroot [^ \\]*' "$REPO/auto/config" 2>/dev/null | head -1 | awk '{print $2}')
 if [ -n "${MIRROR}" ]; then

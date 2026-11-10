@@ -17,6 +17,7 @@ lb config noauto \
 	--bootappend-live "boot=live components quiet loglevel=3 vt.global_cursor_default=0 username=kola hostname=kola locales=en_US.UTF-8 keyboard-layouts=us keyboard-model=pc105 timezone=Africa/Dar_es_Salaam" \
 	--apt-recommends false \
 	--apt-indices false \
+	--cache-stages none \
 	--apt-options "--yes --no-install-recommends -o Acquire::Retries=5" \
 	--archive-areas "main contrib non-free-firmware" \
 	--debian-installer none \

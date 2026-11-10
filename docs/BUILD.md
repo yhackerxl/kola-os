@@ -50,6 +50,11 @@ Debian 12 toolchain by pointing `KOLA_BUILDROOT` at it (default
 
 ## Known limits
 
+- Bootstrap caching is disabled (`--cache-stages none`): debootstrap leaves a live
+  `/proc` inside `chroot/`, and live-build's cache step copies it, failing on
+  `/proc/1/task/1/mem`. `build.sh` also unmounts stale `chroot/{proc,sys,dev}` on
+  entry and exit. Consequence: every full build re-runs `lb bootstrap` (~2–3 min
+  at 1 MB/s). Package `.deb` caching is still on, so retries do not re-download.
 - No persistence: student work must be saved to USB via PCManFM.
 - Secure Boot must be disabled.
 - Epiphany is the dominant memory consumer; there is no lighter fallback in v0.1.
