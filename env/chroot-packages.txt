@@ -1,0 +1,42 @@
+# Packages installed inside the shared Debian 12 build root.
+# Read by env/bootstrap.sh and env/verify.sh; edit here, not in the scripts.
+#
+# The root is created with mmdebstrap --variant=apt, which omits
+# Priority: required packages, and live-build declares almost no dependencies
+# (Depends: debootstrap). Everything it calls at runtime must be listed.
+
+live-build
+debootstrap
+
+# rootfs + ISO mastering
+squashfs-tools
+xorriso
+genisoimage
+mtools
+dosfstools
+
+# UEFI + hybrid boot
+grub-efi-amd64-bin
+grub-pc-bin
+syslinux-common
+isolinux
+
+# chroot setup
+ca-certificates
+debian-archive-keyring
+locales
+console-setup
+file
+less
+
+# runtime requirements of live-build scripts (not declared upstream)
+mount
+util-linux
+rsync
+cpio
+xz-utils
+apt-utils
+e2fsprogs
+parted
+gawk
+bc

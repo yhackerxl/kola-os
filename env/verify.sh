@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pre-build gate. Nothing is built unless every check passes.
-# Checks: host tools, OVMF, KVM, disk space, chroot toolchain, repo syntax.
+# Checks: host packages, OVMF, KVM, disk, mirror, chroot, config, repo syntax.
 set -uo pipefail
 
 ROOT="${KOLA_BUILDROOT:-$HOME/.cache/debian12-live-build}"
@@ -12,19 +12,19 @@ bad()  { printf '  [ FAIL ] %s\n' "$1"; fail=1; }
 warn() { printf '  [ WARN ] %s\n' "$1"; }
 skip() { printf '  [ -- ]   %s\n' "$1"; }
 
-echo "== host tools"
-if command -v mmdebstrap >/dev/null || command -v debootstrap >/dev/null; then
-	ok "bootstrap tool"
+read_list() { grep -vE '^[[:space:]]*(#|$)' "$1" | awk '{print $1}'; }
+
+echo "== host packages"
+if [ -f "${REPO}/env/host-packages.txt" ]; then
+	while read -r p; do
+		if dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q "install ok installed"; then
+			ok "$p"
+		else
+			bad "$p (run ./env/bootstrap.sh)"
+		fi
+	done < <(read_list "${REPO}/env/host-packages.txt")
 else
-	bad "mmdebstrap/debootstrap (run ./env/bootstrap.sh)"
-fi
-for c in qemu-system-x86_64; do
-	if command -v "$c" >/dev/null; then ok "$c"; else bad "$c (run ./env/bootstrap.sh)"; fi
-done
-if [ -f /usr/share/keyrings/debian-archive-keyring.gpg ]; then
-	ok "debian-archive-keyring"
-else
-	bad "debian-archive-keyring (run ./env/bootstrap.sh)"
+	bad "env/host-packages.txt missing"
 fi
 
 echo "== UEFI firmware"
@@ -39,7 +39,7 @@ echo "== virtualization"
 if [ -w /dev/kvm ]; then
 	ok "/dev/kvm accessible"
 elif [ -e /dev/kvm ]; then
-	skip "/dev/kvm exists but not writable - QEMU will fall back to TCG (slow) or re-login after usermod -aG kvm"
+	skip "/dev/kvm not writable - 'sudo usermod -aG kvm \$USER' then re-login"
 else
 	skip "/dev/kvm absent - QEMU will run under TCG only"
 fi
@@ -53,12 +53,27 @@ else
 	bad "need 20 GB free, have $((AVAIL/1024/1024)) GB"
 fi
 
+echo "== mirror throughput"
+MIRROR_LINE=$("$REPO/env/mirror.sh" --select 2>/dev/null || true)
+MIRROR=$(echo "${MIRROR_LINE}" | awk '{print $1}')
+KBS=$(echo "${MIRROR_LINE}" | awk '{print $2}')
+MIN_KBPS="${KOLA_MIN_KBPS:-100}"
+if [ -z "${MIRROR}" ]; then
+	bad "no reachable Debian mirror (see env/mirrors.txt)"
+elif [ "${KBS:-0}" -ge 250 ]; then
+	ok "mirror ${MIRROR} (${KBS} KB/s)"
+elif [ "${KBS:-0}" -ge "${MIN_KBPS}" ]; then
+	warn "mirror ${MIRROR} (${KBS} KB/s) - slower than ideal, build will take longer"
+else
+	bad "best mirror ${MIRROR} only ${KBS:-0} KB/s (min ${MIN_KBPS}); every mirror is slow right now"
+	skip "retry later: ./env/mirror.sh --force   (or accept with KOLA_MIN_KBPS=50)"
+fi
+
 pkg_installed() {
 	local p="$1"
 	if [ "$(id -u)" -eq 0 ]; then
 		chroot "${ROOT}" dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q "install ok installed"
 	else
-		# non-root: read the status database directly (world-readable)
 		awk -v pkg="$p" 'BEGIN{RS="";FS="\n"} $1=="Package: "pkg && /Status: install ok installed/ {f=1} END{exit !f}' \
 			"${ROOT}/var/lib/dpkg/status" 2>/dev/null
 	fi
@@ -67,15 +82,13 @@ pkg_installed() {
 echo "== build root: ${ROOT}"
 if [ -x "${ROOT}/bin/bash" ] && [ -f "${ROOT}/etc/debian_version" ]; then
 	ok "Debian $(cat "${ROOT}/etc/debian_version" 2>/dev/null || echo '?') root present"
-	for p in live-build debootstrap squashfs-tools xorriso mtools dosfstools \
-		grub-efi-amd64-bin grub-pc-bin syslinux-common isolinux \
-		mount util-linux rsync cpio xz-utils apt-utils e2fsprogs parted gawk; do
+	while read -r p; do
 		if pkg_installed "$p"; then
 			ok "chroot: $p"
 		else
-			bad "chroot: $p missing"
+			bad "chroot: $p missing (run ./env/bootstrap.sh)"
 		fi
-	done
+	done < <(read_list "${REPO}/env/chroot-packages.txt")
 else
 	bad "build root missing or incomplete (no /bin/bash) - run ./env/bootstrap.sh"
 fi
@@ -115,20 +128,27 @@ else
 	bad "config: --cache-stages none missing (proc leak in bootstrap cache)"
 fi
 
-echo "== mirror throughput"
-MIRROR_LINE=$("$REPO/env/mirror.sh" --select 2>/dev/null || true)
-MIRROR=$(echo "${MIRROR_LINE}" | awk '{print $1}')
-KBS=$(echo "${MIRROR_LINE}" | awk '{print $2}')
-MIN_KBPS="${KOLA_MIN_KBPS:-100}"
-if [ -z "${MIRROR}" ]; then
-	bad "no reachable Debian mirror (see env/mirrors.txt)"
-elif [ "${KBS:-0}" -ge 250 ]; then
-	ok "mirror ${MIRROR} (${KBS} KB/s)"
-elif [ "${KBS:-0}" -ge "${MIN_KBPS}" ]; then
-	warn "mirror ${MIRROR} (${KBS} KB/s) - slower than ideal, build will take longer"
+# Requiring both mirror families guards the exact bug that sent a 3 h build at
+# the Debian CDN while .mirror said ftp.nl: LB_MIRROR_* is only what gets baked
+# into the image, bootstrap_debootstrap reads LB_PARENT_MIRROR_*.
+MIRRORSEL=$(awk '{print $1}' "$REPO/.mirror" 2>/dev/null || true)
+if grep -q -- '--parent-mirror-bootstrap' "$REPO/auto/config" 2>/dev/null; then
+	ok "config: parent mirrors follow .mirror (${MIRRORSEL:-unset})"
 else
-	bad "best mirror ${MIRROR} only ${KBS:-0} KB/s (min ${MIN_KBPS}); every mirror is slow right now"
-	skip "retry later with: ./env/mirror.sh --force   (or set KOLA_MIN_KBPS to accept it)"
+	bad "config: --parent-mirror-bootstrap missing (build would use deb.debian.org)"
+fi
+if grep -q 'flock -n 9' "$REPO/build.sh" 2>/dev/null; then
+	ok "build.sh: single-instance lock"
+else
+	bad "build.sh: no flock guard (concurrent builds corrupt the tree)"
+fi
+if [ -f "$REPO/config/bootstrap" ] && [ -n "${MIRRORSEL}" ]; then
+	STALE=$(sed -n 's/^LB_PARENT_MIRROR_BOOTSTRAP="\(.*\)"$/\1/p' "$REPO/config/bootstrap")
+	if [ -n "${STALE}" ] && [ "${STALE%/}" != "${MIRRORSEL%/}" ]; then
+		warn "generated config/bootstrap still points at ${STALE} - 'lb config' will rewrite it"
+	else
+		ok "generated config/bootstrap matches .mirror"
+	fi
 fi
 
 echo "== repository"

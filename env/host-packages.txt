@@ -1,0 +1,8 @@
+# Host packages required to build Kola OS.
+# Installed system-wide by ./env/bootstrap.sh — nothing is per-project.
+# Read by env/bootstrap.sh and env/verify.sh; edit here, not in the scripts.
+mmdebstrap
+debootstrap
+qemu-system-x86
+ovmf
+debian-archive-keyring

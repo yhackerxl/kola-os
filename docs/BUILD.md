@@ -24,6 +24,17 @@ Debian 12 toolchain by pointing `KOLA_BUILDROOT` at it (default
   `env/verify.sh` fails the gate if this reappears.
 - `auto/build` is called **by** `lb build`. It must call `lb bootstrap`,
   `lb chroot`, `lb binary` — never `lb build`.
+- **Both mirror families must be passed to `lb config`.** `--mirror-*` is only
+  what gets recorded inside the image; `bootstrap_debootstrap` debootstraps from
+  `LB_PARENT_MIRROR_*`, whose defaults (`deb.debian.org`) live-build persists in
+  the generated `config/bootstrap` and re-sources on the next `lb config`.
+  `auto/config` therefore also passes `--parent-mirror-bootstrap/chroot/binary`.
+  Symptom of a regression: the log says `Checking component main on
+  http://deb.debian.org` while `.mirror` names a faster host, and bootstrap
+  takes hours. `env/verify.sh` fails the gate if the parent options are absent.
+- **Only one build may run.** `build.sh` holds `.lock` with `flock -n`; a second
+  invocation exits immediately. Never start a build while another is running —
+  `lb config` rewrites `config/` underneath it.
 
 ## Components that MUST be verified on the first build
 

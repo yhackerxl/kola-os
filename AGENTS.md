@@ -16,6 +16,9 @@ Implemented in `build.sh` (`MIN_FREE_GB=20`, hard abort) and in `env/verify.sh`.
 - Build output lives inside this repository (`chroot/`, `cache/`, `binary/`, `.build/`).
 - The shared toolchain lives at `~/.cache/debian12-live-build` (a Debian 12
   chroot, not a workspace).
+- **One build at a time.** `build.sh` takes `.lock` with `flock -n`; a second
+  concurrent build aborts instead of regenerating `config/` under the running
+  one (that produced two debootstraps writing into the same `chroot/`).
 
 ## 3. Clean before build
 

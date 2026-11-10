@@ -17,6 +17,17 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 export LC_ALL=C
 
+# --- single instance (AGENTS.md rule 2) -----------------------------------
+# Overlapping builds regenerated config/bootstrap under a running lb and sent
+# two debootstrap processes at the same chroot. Serialise instead.
+exec 9>.lock
+if ! flock -n 9; then
+	echo "ERROR: another Kola OS build is already running (.lock held)." >&2
+	echo "       Wait for it, or run 'make reset' if it is dead." >&2
+	exit 1
+fi
+echo ">> lock acquired (.lock)"
+
 # --- mandatory disk pre-flight (AGENTS.md rule 1) -------------------------
 MIN_FREE_GB=20
 AVAIL_KB=$(df -Pk / | awk 'NR==2 {print $4}')
